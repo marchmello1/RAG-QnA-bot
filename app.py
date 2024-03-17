@@ -73,10 +73,8 @@ def handle_question(question, openai_api_key):
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            if "chat_history" not in st.session_state:
-                st.session_state.chat_history = []
-            st.session_state.chat_history += response["chat_history"]
-            for i, msg in enumerate(response["chat_history"]):
+            st.session_state.chat_history = response["chat_history"]
+            for i, msg in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:
@@ -95,36 +93,15 @@ def main():
         st.session_state.conversation = None
 
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
+        st.session_state.chat_history = None
+    
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
     question = st.text_input("Ask a question")
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
-        if st.session_state.chat_history:
-            for i, msg in enumerate(st.session_state.chat_history):
-                if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
     else:
-        if st.session_state.chat_history:
-            for i, msg in enumerate(st.session_state.chat_history):
-                if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-        # Check if conversation is ongoing
-        elif st.session_state.conversation:
-            for i, msg in enumerate(st.session_state.chat_history):
-                if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-            st.warning("Type a question to continue the conversation.")
-        else:
-            st.warning("Type a question to start the conversation.")
+        st.warning("Type a question to start the conversation.")
     
     with st.sidebar:
         st.subheader("Upload Documents")

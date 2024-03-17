@@ -85,7 +85,8 @@ def handle_question(question, openai_api_key):
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-    question = ""  # Reset the question input
+    st.session_state.question = ""  # Reset the question input
+
 
 
 

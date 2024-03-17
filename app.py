@@ -96,10 +96,17 @@ def main():
         st.session_state.chat_history = None
     
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question")
+    
+    # Define a unique key for the question text input
+    question_input_key = "question_input_key"
+    question = st.text_input("Ask a question", key=question_input_key)
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
+        
+        # Clear the question input after sending the question
+        st.session_state[question_input_key] = ""  # Set the value of the question input to an empty string
+    
     else:
         st.warning("Type a question to start the conversation.")
     

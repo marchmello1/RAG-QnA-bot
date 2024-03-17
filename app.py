@@ -101,19 +101,15 @@ def main():
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
     else:
-        st.warning("Type a question to start the conversation.")
-
-    # Display conversation history
-    st.subheader("Conversation History")
-    if st.session_state.chat_history:
-        for i, msg in enumerate(st.session_state.chat_history):
-            if i % 2 == 0:
-                st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-            else:
-                st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-    else:
-        st.info("No conversation history yet.")
-
+        if st.session_state.chat_history:
+            for i, msg in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:
+                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                else:
+                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+        else:
+            st.warning("Type a question to start the conversation.")
+    
     with st.sidebar:
         st.subheader("Upload Documents")
         docs = st.file_uploader("Upload PDF documents", accept_multiple_files=True)
@@ -137,4 +133,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

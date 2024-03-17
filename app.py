@@ -73,40 +73,18 @@ def handle_question(question, openai_api_key):
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            st.session_state.chat_history.append({"question": question, "response": response["answer"]})
-            unique_questions = set()
-            for msg in st.session_state.chat_history:
-                if msg["question"] not in unique_questions:
-                    unique_questions.add(msg["question"])
-                    st.write(user_template.replace("{{MSG}}", msg["question"]), unsafe_allow_html=True)
-                    st.write(bot_template.replace("{{MSG}}", msg["response"]), unsafe_allow_html=True)
+            st.session_state.chat_history.extend(response["chat_history"])
+            for i, msg in enumerate(response["chat_history"]):
+                if i % 2 == 0:
+                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                else:
+                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             return
 
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
-    st.session_state.chat_history.append({"question": question, "response": response})
-    unique_questions = set()
-    for msg in st.session_state.chat_history:
-        if msg["question"] not in unique_questions:
-            unique_questions.add(msg["question"])
-            st.write(user_template.replace("{{MSG}}", msg["question"]), unsafe_allow_html=True)
-            st.write(bot_template.replace("{{MSG}}", msg["response"]), unsafe_allow_html=True)
-
-    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    response = llm.predict(question)  # Use predict() method to generate response
-    st.session_state.chat_history.append(ChatMessage(content=question, sender="User"))
-    st.session_state.chat_history.append(ChatMessage(content=response, sender="Bot"))
-    # Clear duplicate messages
-    unique_messages = {msg.content for msg in st.session_state.chat_history}
-    st.session_state.chat_history = [ChatMessage(content=msg, sender="Bot") for msg in unique_messages]
-    st.write(user_template.replace("{{MSG}}", question), unsafe_allow_html=True)
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-
-    
-class ChatMessage:
-    def __init__(self, content, sender):
-        self.content = content
-        self.sender = sender
+    st.session_state.chat_history.append(ChatMessage(content=response, is_user=False))
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
@@ -123,25 +101,17 @@ def main():
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
-        
-        # Reverse chat history to display latest message first
-        reversed_chat_history = reversed(st.session_state.chat_history)
-        for i, msg in enumerate(reversed_chat_history):
+        for i, msg in enumerate(st.session_state.chat_history):
             if i % 2 == 0:
                 st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             else:
                 st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
     else:
-        if st.session_state.chat_history:
-            # Reverse chat history to display latest message first
-            reversed_chat_history = reversed(st.session_state.chat_history)
-            for i, msg in enumerate(reversed_chat_history):
-                if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-        else:
-            st.warning("Type a question to start the conversation.")
+        for i, msg in enumerate(st.session_state.chat_history):
+            if i % 2 == 0:
+                st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+            else:
+                st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
     
     with st.sidebar:
         st.subheader("Upload Documents")

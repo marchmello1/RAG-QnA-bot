@@ -73,8 +73,8 @@ def handle_question(question, openai_api_key):
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            st.session_state.chat_history.extend(response["chat_history"])
-            for i, msg in enumerate(response["chat_history"]):
+            st.session_state.chat_history = response["chat_history"]
+            for i, msg in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:
@@ -84,14 +84,6 @@ def handle_question(question, openai_api_key):
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-    st.session_state.chat_history.append(response)  # Append the response directly as a string
-
-
-
-    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    response = llm.predict(question)  # Use predict() method to generate response
-    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-    st.session_state.chat_history.append(ChatMessage(content=response, is_user=False))
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
@@ -108,17 +100,21 @@ def main():
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
-        for i, msg in enumerate(st.session_state.chat_history):
-            if i % 2 == 0:
-                st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-            else:
-                st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+        if st.session_state.chat_history:
+            for i, msg in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:
+                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                else:
+                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
     else:
-        for i, msg in enumerate(st.session_state.chat_history):
-            if i % 2 == 0:
-                st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-            else:
-                st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+        if st.session_state.chat_history:
+            for i, msg in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:
+                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                else:
+                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+        else:
+            st.warning("Type a question to start the conversation.")
     
     with st.sidebar:
         st.subheader("Upload Documents")

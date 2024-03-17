@@ -72,10 +72,10 @@ def handle_question(question, openai_api_key):
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            st.session_state.chat_history.append(question)
-            st.session_state.chat_history.extend(response["chat_history"])
-            for i, msg in enumerate(response["chat_history"]):
-                if i % 2 == 0:
+            st.session_state.chat_history.append(("user", question))
+            st.session_state.chat_history.extend([(msg.sender, msg.content) for msg in response["chat_history"]])
+            for msg in response["chat_history"]:
+                if msg.sender == "user":
                     st.markdown(f"<div style='text-align:left'>{user_template.replace('{{MSG}}', msg.content)}</div>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', msg.content)}</div>", unsafe_allow_html=True)
@@ -83,8 +83,8 @@ def handle_question(question, openai_api_key):
 
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
-    st.session_state.chat_history.append(question)
-    st.session_state.chat_history.append(response)
+    st.session_state.chat_history.append(("user", question))
+    st.session_state.chat_history.append(("bot", response))
     st.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', response)}</div>", unsafe_allow_html=True)
 
 def main():
@@ -121,8 +121,8 @@ def main():
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
     
     # Conversation history
-    for msg in st.session_state.chat_history:
-        if isinstance(msg, str):
+    for sender, msg in st.session_state.chat_history:
+        if sender == "user":
             st.markdown(f"<div style='text-align:left'>{user_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)

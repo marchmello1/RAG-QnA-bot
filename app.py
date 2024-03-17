@@ -96,7 +96,8 @@ def main():
         st.session_state.chat_history = None
     
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question", class="message-input")
+    st.markdown('<input type="text" class="message-input" placeholder="Ask a question">', unsafe_allow_html=True)
+    question = st.text_input("", class="message-input", value="", key="user_question")
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here

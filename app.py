@@ -74,7 +74,8 @@ def handle_question(question, openai_api_key):
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
             st.session_state.chat_history = response["chat_history"]
-            for i, msg in enumerate(st.session_state.chat_history):
+            chat_history = st.session_state.chat_history[::-1]  # Reverse the order of messages
+            for i, msg in enumerate(chat_history):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:

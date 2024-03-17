@@ -119,26 +119,25 @@ def main():
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-
+    
     # Conversation history
-    col_history, col_input = st.columns([3, 1])
-    with col_history:
-        for sender, msg in st.session_state.chat_history:
-            if sender == "user":
-                st.markdown(f"<div style='text-align:left'>{user_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
+    for sender, msg in st.session_state.chat_history:
+        if sender == "user":
+            st.markdown(f"<div style='text-align:left'>{user_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
 
     # Message/question box
-    with col_input:
-        question = st.text_input("User:")
-        send_button = st.button("Send")
+    question = st.text_input("User:", key="input_text")
 
-        if send_button:
-            if question:
-                handle_question(question, openai_api_key)  # Pass the API key here
-            else:
-                st.warning("Type a question to start the conversation.")
+    # Send button
+    send_button = st.button("Send")
+
+    if send_button:
+        if question:
+            handle_question(question, openai_api_key)  # Pass the API key here
+        else:
+            st.warning("Type a question to start the conversation.")
 
 if __name__ == '__main__':
     main()

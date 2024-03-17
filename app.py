@@ -80,12 +80,14 @@ def handle_question(question, openai_api_key):
                 else:
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             st.session_state.question = ""  # Reset the question after processing
+            st.session_state.chat_input = ""  # Clear the input box after sending the message
             return
 
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
     st.session_state.question = ""  # Reset the question after processing
+    st.session_state.chat_input = ""  # Clear the input box after sending the message
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
@@ -100,13 +102,11 @@ def main():
     if "question" not in st.session_state:
         st.session_state.question = ""
 
-    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question", value=st.session_state.question)
+    if "chat_input" not in st.session_state:
+        st.session_state.chat_input = ""
 
-    if st.button("Submit"):
-        handle_question(question, openai_api_key)  # Pass the API key here
-    elif question:
-        st.warning("Press the 'Submit' button to ask the question.")
+    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
+    st.session_state.chat_input = st.text_input("Ask a question", value=st.session_state.chat_input, on_change=handle_question)
 
     with st.sidebar:
         st.subheader("Upload Documents")

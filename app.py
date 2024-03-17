@@ -88,13 +88,21 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question")
+    if "user_question" not in st.session_state:
+        st.session_state.user_question = ""
 
-    if question:
-        handle_question(question, openai_api_key)  # Pass the API key here
-    else:
-        st.warning("Type a question to start the conversation.")
+    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
+    
+    # Add a placeholder to reserve space for the message input box at the bottom
+    message_input_placeholder = st.empty()
+    
+    # Move the message input box to the bottom of the sidebar
+    user_question = st.sidebar.text_input("Enter your message", key="user_question", value=st.session_state.user_question)
+
+    if st.sidebar.button("Send"):
+        if user_question:
+            handle_question(user_question, openai_api_key)  # Pass the API key here
+            st.session_state.user_question = ""
 
     with st.sidebar:
         st.subheader("Upload Documents")
@@ -117,11 +125,10 @@ def main():
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 
-    for message in st.session_state.chat_history:
+    for message in reversed(st.session_state.chat_history):
         if message["sender"] == "user":
             st.write(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
         else:
             st.write(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
 
-if __name__ == '__main__':
-    main()
+if __

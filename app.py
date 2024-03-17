@@ -74,7 +74,6 @@ def handle_question(question, openai_api_key):
         if response["answer"]:
             st.session_state.chat_history = response["chat_history"]
             for i, msg in enumerate(st.session_state.chat_history):
-                st.image('https://image.flaticon.com/icons/png/512/1946/1946431.png', width=30)
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:
@@ -83,7 +82,6 @@ def handle_question(question, openai_api_key):
 
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
-    st.image('https://image.flaticon.com/icons/png/512/1946/1946431.png', width=30)
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
 
 def main():

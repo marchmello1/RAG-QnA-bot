@@ -29,14 +29,15 @@ Standalone question:
 # Prompt template instance
 CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
 
-# Extract text from PDF
 def get_pdf_text(docs):
     text = ""
     for pdf in docs:
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             text += page.extract_text()
+            text += "\n"  # Add a newline character to separate text from different pages
     return text
+
 
 # Convert text to chunks
 def get_chunks(raw_text):

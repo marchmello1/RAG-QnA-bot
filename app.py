@@ -87,6 +87,11 @@ def handle_question(question, openai_api_key):
     st.session_state.chat_history.append(ChatMessage(content=response, sender="Bot"))
     st.write(user_template.replace("{{MSG}}", question), unsafe_allow_html=True)
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+    
+class ChatMessage:
+    def __init__(self, content, sender):
+        self.content = content
+        self.sender = sender
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")

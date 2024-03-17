@@ -113,6 +113,14 @@ def main():
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+        # Check if conversation is ongoing
+        elif st.session_state.conversation:
+            for i, msg in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:
+                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                else:
+                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+            st.warning("Type a question to continue the conversation.")
         else:
             st.warning("Type a question to start the conversation.")
     

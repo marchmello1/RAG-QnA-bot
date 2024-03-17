@@ -74,7 +74,10 @@ def handle_question(question, openai_api_key):
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
             st.session_state.chat_history.extend(response["chat_history"])
-            for i, msg in enumerate(response["chat_history"]):
+            # Clear duplicate messages
+            unique_messages = {msg.content for msg in st.session_state.chat_history}
+            st.session_state.chat_history = [ChatMessage(content=msg, sender="Bot") for msg in unique_messages]
+            for i, msg in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:
@@ -85,8 +88,12 @@ def handle_question(question, openai_api_key):
     response = llm.predict(question)  # Use predict() method to generate response
     st.session_state.chat_history.append(ChatMessage(content=question, sender="User"))
     st.session_state.chat_history.append(ChatMessage(content=response, sender="Bot"))
+    # Clear duplicate messages
+    unique_messages = {msg.content for msg in st.session_state.chat_history}
+    st.session_state.chat_history = [ChatMessage(content=msg, sender="Bot") for msg in unique_messages]
     st.write(user_template.replace("{{MSG}}", question), unsafe_allow_html=True)
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+
     
 class ChatMessage:
     def __init__(self, content, sender):

@@ -118,8 +118,8 @@ def main():
                 st.session_state.chat_history = []
                 conversation = get_conversationchain(vectorstore, openai_api_key, st.session_state.chat_history)
                 st.session_state.chat_history.extend(conversation.memory)
-            else:
-                st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
+        else:
+            st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 
 if __name__ == '__main__':
     main()

@@ -76,14 +76,14 @@ def handle_question(question, openai_api_key):
             st.session_state.chat_history = response["chat_history"]
             for i, msg in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                    st.markdown(f'<div class="user-message message">{msg.content}</div>', unsafe_allow_html=True)
                 else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                    st.markdown(f'<div class="bot-message message">{msg.content}</div>', unsafe_allow_html=True)
             return
 
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
-    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+    st.markdown(f'<div class="bot-message message">{response}</div>', unsafe_allow_html=True)
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
@@ -96,7 +96,7 @@ def main():
         st.session_state.chat_history = None
     
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question")
+    question = st.text_input("Ask a question", class="message-input")
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here

@@ -103,24 +103,23 @@ def main():
         st.subheader("Upload Documents")
         docs = st.file_uploader("Upload PDF documents", accept_multiple_files=True)
         
-        if st.button("Process Documents"):
+        if docs and st.button("Process Documents"):
             with st.spinner("Processing"):
-                if docs:
-                    # Get the pdf
-                    raw_text = get_pdf_text(docs)
-                    
-                    # Get the text chunks
-                    text_chunks = get_chunks(raw_text)
-                    
-                    # Create vectorstore
-                    vectorstore = get_vectorstore(text_chunks)
-                    
-                    # Create conversation chain
-                    st.session_state.chat_history = []
-                    conversation = get_conversationchain(vectorstore, openai_api_key, st.session_state.chat_history)
-                    st.session_state.chat_history.extend(conversation.memory)
-                else:
-                    st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
+                # Get the pdf
+                raw_text = get_pdf_text(docs)
+                
+                # Get the text chunks
+                text_chunks = get_chunks(raw_text)
+                
+                # Create vectorstore
+                vectorstore = get_vectorstore(text_chunks)
+                
+                # Create conversation chain
+                st.session_state.chat_history = []
+                conversation = get_conversationchain(vectorstore, openai_api_key, st.session_state.chat_history)
+                st.session_state.chat_history.extend(conversation.memory)
+            else:
+                st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 
 if __name__ == '__main__':
     main()

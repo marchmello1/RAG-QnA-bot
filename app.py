@@ -131,4 +131,6 @@ def main():
         else:
             st.write(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
 
-if __
+if __name__ == '__main__':
+    main()
+

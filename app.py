@@ -73,8 +73,10 @@ def handle_question(question, openai_api_key):
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            st.session_state.chat_history = response["chat_history"]
-            for i, msg in enumerate(st.session_state.chat_history):
+            if "chat_history" not in st.session_state:
+                st.session_state.chat_history = []
+            st.session_state.chat_history += response["chat_history"]
+            for i, msg in enumerate(response["chat_history"]):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:

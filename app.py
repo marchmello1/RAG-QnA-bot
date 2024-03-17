@@ -74,8 +74,7 @@ def handle_question(question, openai_api_key):
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
             st.session_state.chat_history = response["chat_history"]
-            chat_history = st.session_state.chat_history[::-1]  # Reverse the order of messages
-            for i, msg in enumerate(chat_history):
+            for i, msg in enumerate(st.session_state.chat_history):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:
@@ -95,6 +94,14 @@ def main():
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = None
+    
+    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
+    question = st.text_input("Ask a question")
+    
+    if question:
+        handle_question(question, openai_api_key)  # Pass the API key here
+    else:
+        st.warning("Type a question to start the conversation.")
     
     with st.sidebar:
         st.subheader("Upload Documents")
@@ -116,14 +123,6 @@ def main():
                     st.session_state.conversation = get_conversationchain(vectorstore, openai_api_key)  # Pass the API key here
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
-    
-    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question")
-    
-    if question:
-        handle_question(question, openai_api_key)  # Pass the API key here
-    else:
-        st.warning("Type a question to start the conversation.")
 
 if __name__ == '__main__':
     main()

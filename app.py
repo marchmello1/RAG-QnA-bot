@@ -99,10 +99,19 @@ def main():
     
     # Define a unique key for the question text input
     question_input_key = "question_input_key"
-    question = st.text_input("Ask a question", key=question_input_key)
     
-    if question:
-        handle_question(question, openai_api_key)  # Pass the API key here
+    # Get the current question value from session state
+    question_value = st.session_state.get(question_input_key, "")
+    
+    # Define a variable to hold the updated question value
+    updated_question_value = st.text_input("Ask a question", value=question_value, key=question_input_key)
+    
+    # If the question value has changed, update it in session state
+    if updated_question_value != question_value:
+        st.session_state[question_input_key] = updated_question_value
+    
+    if updated_question_value:
+        handle_question(updated_question_value, openai_api_key)  # Pass the API key here
         
         # Clear the question input after sending the question
         st.session_state[question_input_key] = ""  # Set the value of the question input to an empty string

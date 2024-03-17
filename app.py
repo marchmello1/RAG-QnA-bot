@@ -108,14 +108,19 @@ def main():
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
-        for i, msg in enumerate(st.session_state.chat_history):
+        
+        # Reverse chat history to display latest message first
+        reversed_chat_history = reversed(st.session_state.chat_history)
+        for i, msg in enumerate(reversed_chat_history):
             if i % 2 == 0:
                 st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             else:
                 st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
     else:
         if st.session_state.chat_history:
-            for i, msg in enumerate(st.session_state.chat_history):
+            # Reverse chat history to display latest message first
+            reversed_chat_history = reversed(st.session_state.chat_history)
+            for i, msg in enumerate(reversed_chat_history):
                 if i % 2 == 0:
                     st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                 else:

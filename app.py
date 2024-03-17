@@ -14,6 +14,9 @@ from htmlTemplates import css, bot_template, user_template
 # Load environment variables from .env file
 load_dotenv()
 
+# Load OpenAI API key from Streamlit secrets
+openai_api_key = st.secrets["streamlit"]["openai_api_key"]
+
 # Custom prompt template for rephrasing follow-up questions
 custom_template = """
 Given the following conversation and a follow-up question, rephrase the follow-up question to be a standalone question, in its original language.
@@ -86,9 +89,6 @@ def handle_question(question, openai_api_key):
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":question:", layout="wide")
     st.write(css, unsafe_allow_html=True)
-    
-    # Load OpenAI API key from environment variable
-    openai_api_key = os.getenv("OPENAI_API_KEY")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None

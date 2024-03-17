@@ -72,17 +72,11 @@ def handle_question(question, openai_api_key):
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            st.session_state.chat_history = response["chat_history"]
-            for msg in st.session_state.chat_history:
-                if msg.sender == "user":
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+            st.session_state.chat_history.append({"content": response["content"], "sender": "bot"})
 
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
-    st.session_state.chat_history.append(Message(content=response, sender="bot"))
-    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+    st.session_state.chat_history.append({"content": response, "sender": "bot"})
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
@@ -122,6 +116,12 @@ def main():
                     st.session_state.conversation = get_conversationchain(vectorstore, openai_api_key)  # Pass the API key here
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
+
+    for message in st.session_state.chat_history:
+        if message["sender"] == "user":
+            st.write(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
+        else:
+            st.write(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
 
 if __name__ == '__main__':
     main()

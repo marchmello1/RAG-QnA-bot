@@ -69,35 +69,59 @@ def get_conversationchain(vectorstore, openai_api_key):
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
+    if st.session_state.conversation:
+        response = st.session_state.conversation({'question': question})
+        if response["answer"]:
+            st.session_state.chat_history.append({"content": response["content"], "sender": "bot"})
+
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
-    st.session_state.chat_history.append({"sender": "user", "content": question})
-    st.session_state.chat_history.append({"sender": "bot", "content": response})
+    st.session_state.chat_history.append({"content": response, "sender": "bot"})
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
     st.write(css, unsafe_allow_html=True)
 
+    if "conversation" not in st.session_state:
+        st.session_state.conversation = None
+
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    
-    # Display chat history
-    for message in reversed(st.session_state.chat_history):
+    question = st.text_input("Ask a question")
+
+    if question:
+        handle_question(question, openai_api_key)  # Pass the API key here
+    else:
+        st.warning("Type a question to start the conversation.")
+
+    with st.sidebar:
+        st.subheader("Upload Documents")
+        docs = st.file_uploader("Upload PDF documents", accept_multiple_files=True)
+
+        if st.button("Process Documents"):
+            with st.spinner("Processing"):
+                if docs:
+                    # Get the pdf
+                    raw_text = get_pdf_text(docs)
+
+                    # Get the text chunks
+                    text_chunks = get_chunks(raw_text)
+
+                    # Create vectorstore
+                    vectorstore = get_vectorstore(text_chunks)
+
+                    # Create conversation chain
+                    st.session_state.conversation = get_conversationchain(vectorstore, openai_api_key)  # Pass the API key here
+                else:
+                    st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
+
+    for message in st.session_state.chat_history:
         if message["sender"] == "user":
             st.write(user_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
         else:
             st.write(bot_template.replace("{{MSG}}", message["content"]), unsafe_allow_html=True)
-
-    # Message input box
-    question = st.text_input("Ask a question")
-    
-    if st.button("Send"):
-        if question:
-            handle_question(question, openai_api_key)
-        else:
-            st.warning("Please enter a question.")
 
 if __name__ == '__main__':
     main()

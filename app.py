@@ -93,13 +93,19 @@ def main():
         st.session_state.conversation = None
 
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = None
-    
+        st.session_state.chat_history = []
+
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
     question = st.text_input("Ask a question")
     
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
+        if st.session_state.chat_history:
+            for i, msg in enumerate(st.session_state.chat_history):
+                if i % 2 == 0:
+                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                else:
+                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
     else:
         if st.session_state.chat_history:
             for i, msg in enumerate(st.session_state.chat_history):

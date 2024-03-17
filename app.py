@@ -121,11 +121,12 @@ def main():
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
     
     # Conversation history
+    history_container = st.empty()
     for sender, msg in st.session_state.chat_history:
         if sender == "user":
-            st.markdown(f"<div style='text-align:left'>{user_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
+            history_container.markdown(f"<div style='text-align:left'>{user_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
+            history_container.markdown(f"<div style='text-align:right'>{bot_template.replace('{{MSG}}', msg)}</div>", unsafe_allow_html=True)
 
     # Message/question box
     question = st.text_input("User:", key="input_text")

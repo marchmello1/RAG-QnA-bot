@@ -84,6 +84,13 @@ def handle_question(question, openai_api_key):
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+    st.session_state.chat_history.append(response)  # Append the response directly as a string
+
+
+
+    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
+    response = llm.predict(question)  # Use predict() method to generate response
+    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
     st.session_state.chat_history.append(ChatMessage(content=response, is_user=False))
 
 def main():

@@ -38,7 +38,6 @@ def get_pdf_text(docs):
             text += "\n"  # Add a newline character to separate text from different pages
     return text
 
-
 # Convert text to chunks
 def get_chunks(raw_text):
     text_splitter = CharacterTextSplitter(separator="\n",

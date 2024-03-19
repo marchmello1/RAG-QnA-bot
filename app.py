@@ -70,6 +70,7 @@ def get_conversationchain(vectorstore, openai_api_key):
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
+    # Check if the conversation chain is initialized
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
@@ -80,16 +81,12 @@ def handle_question(question, openai_api_key):
                 else:
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             return
-        else:
-            # If no match found in the document, fall back to LLM model
-            llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-            response = llm.predict(question)
-            st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-    else:
-        # If conversation chain hasn't been initialized yet, use LLM model directly
-        llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-        response = llm.predict(question)
-        st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+
+    # If conversation chain is not initialized or no answer found, fall back to LLM model
+    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
+    response = llm.predict(question)
+    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")

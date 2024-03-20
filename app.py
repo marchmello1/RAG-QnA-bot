@@ -55,7 +55,7 @@ def get_vectorstore(chunks):
     vectorstore = faiss.FAISS.from_texts(texts=chunks, embedding=embeddings)
     return vectorstore
 
-
+# Generate conversation chain  
 def get_conversationchain(vectorstore, openai_api_key):
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     memory = ConversationBufferMemory(memory_key='chat_history', 
@@ -66,12 +66,7 @@ def get_conversationchain(vectorstore, openai_api_key):
                                 retriever=vectorstore.as_retriever(),
                                 condense_question_prompt=CUSTOM_QUESTION_PROMPT,
                                 memory=memory)
-    
-    # Store vectorstore in session state
-    st.session_state.vectorstore = vectorstore
-    
     return conversation_chain
-
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
@@ -87,12 +82,9 @@ def handle_question(question, openai_api_key):
             return
 
     if st.session_state.vectorstore:
-        # Retrieve documents relevant to the question
         relevant_documents = st.session_state.vectorstore.search(question)
         if relevant_documents:
-            # Rerank documents based on relevance
             reranked_documents = rerank_documents(relevant_documents)
-            # Check if any relevant documents are left
             if reranked_documents:
                 answer = generate_answer_from_documents(reranked_documents)
                 st.write(bot_template.replace("{{MSG}}", answer), unsafe_allow_html=True)
@@ -105,12 +97,12 @@ def handle_question(question, openai_api_key):
 def rerank_documents(relevant_documents):
     # Implement your reranking logic here
     # This function should return reranked documents based on relevance
-    return reranked_documents
+    return relevant_documents
 
 def generate_answer_from_documents(reranked_documents):
     # Implement logic to generate answer from reranked documents
     # This function should return the answer
-    return answer
+    return "Answer generated from reranked documents"
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
@@ -122,6 +114,9 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = None
     
+    if "vectorstore" not in st.session_state:
+        st.session_state.vectorstore = None
+
     st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
     question = st.text_input("Ask a question")
     
@@ -144,10 +139,10 @@ def main():
                     text_chunks = get_chunks(raw_text)
                     
                     # Create vectorstore
-                    vectorstore = get_vectorstore(text_chunks)
+                    st.session_state.vectorstore = get_vectorstore(text_chunks)
                     
                     # Create conversation chain
-                    st.session_state.conversation = get_conversationchain(vectorstore, openai_api_key)  # Pass the API key here
+                    st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 

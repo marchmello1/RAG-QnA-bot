@@ -55,7 +55,7 @@ def get_vectorstore(chunks):
     vectorstore = faiss.FAISS.from_texts(texts=chunks, embedding=embeddings)
     return vectorstore
 
-# Generate conversation chain  
+
 def get_conversationchain(vectorstore, openai_api_key):
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     memory = ConversationBufferMemory(memory_key='chat_history', 
@@ -66,7 +66,12 @@ def get_conversationchain(vectorstore, openai_api_key):
                                 retriever=vectorstore.as_retriever(),
                                 condense_question_prompt=CUSTOM_QUESTION_PROMPT,
                                 memory=memory)
+    
+    # Store vectorstore in session state
+    st.session_state.vectorstore = vectorstore
+    
     return conversation_chain
+
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):

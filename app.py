@@ -81,28 +81,19 @@ def handle_question(question, openai_api_key):
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             return
 
-    if st.session_state.vectorstore:
-        relevant_documents = st.session_state.vectorstore.search(question)
-        if relevant_documents:
-            reranked_documents = rerank_documents(relevant_documents)
-            if reranked_documents:
-                answer = generate_answer_from_documents(reranked_documents)
-                st.write(bot_template.replace("{{MSG}}", answer), unsafe_allow_html=True)
-                return
-
-    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    response = llm.predict(question)  # Use predict() method to generate response
-    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-
-def rerank_documents(relevant_documents):
-    # Implement your reranking logic here
-    # This function should return reranked documents based on relevance
-    return relevant_documents
-
-def generate_answer_from_documents(reranked_documents):
-    # Implement logic to generate answer from reranked documents
-    # This function should return the answer
-    return "Answer generated from reranked documents"
+    # Check if there's a response from the documents
+    if st.session_state.conversation and response["answer"]:
+        st.session_state.chat_history = response["chat_history"]
+        for i, msg in enumerate(st.session_state.chat_history):
+            if i % 2 == 0:
+                st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+            else:
+                st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+        return
+    else:
+        llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
+        response = llm.predict(question)  # Use predict() method to generate response
+        st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")

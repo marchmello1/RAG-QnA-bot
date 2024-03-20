@@ -94,6 +94,7 @@ def handle_question(question, openai_api_key):
     response = llm.predict(question)
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
 
+
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
     st.write(css, unsafe_allow_html=True)

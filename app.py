@@ -81,9 +81,31 @@ def handle_question(question, openai_api_key):
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             return
 
+    if st.session_state.vectorstore:
+        # Retrieve documents relevant to the question
+        relevant_documents = st.session_state.vectorstore.search(question)
+        if relevant_documents:
+            # Rerank documents based on relevance
+            reranked_documents = rerank_documents(relevant_documents)
+            # Check if any relevant documents are left
+            if reranked_documents:
+                answer = generate_answer_from_documents(reranked_documents)
+                st.write(bot_template.replace("{{MSG}}", answer), unsafe_allow_html=True)
+                return
+
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)  # Use predict() method to generate response
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+
+def rerank_documents(relevant_documents):
+    # Implement your reranking logic here
+    # This function should return reranked documents based on relevance
+    return reranked_documents
+
+def generate_answer_from_documents(reranked_documents):
+    # Implement logic to generate answer from reranked documents
+    # This function should return the answer
+    return answer
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")

@@ -70,6 +70,7 @@ def get_conversationchain(vectorstore, openai_api_key):
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
+    # Check if there's conversation history available
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
@@ -81,19 +82,17 @@ def handle_question(question, openai_api_key):
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             return
 
-    # Check if there's a response from the documents
-    if st.session_state.conversation and response["answer"]:
-        st.session_state.chat_history = response["chat_history"]
-        for i, msg in enumerate(st.session_state.chat_history):
-            if i % 2 == 0:
-                st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-            else:
-                st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-        return
-    else:
+    # Check if the question is specific and related to the uploaded PDF documents
+    if st.session_state.conversation and "not in the uploaded PDF" in response["answer"]:
         llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
         response = llm.predict(question)  # Use predict() method to generate response
         st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+        return
+
+    # If none of the above conditions are met, use the LLM to generate a response
+    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
+    response = llm.predict(question)
+    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
 
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")

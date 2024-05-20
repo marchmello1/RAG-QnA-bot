@@ -1,143 +1,86 @@
-import os
-from dotenv import load_dotenv
 import streamlit as st
-from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import faiss
-from langchain.prompts import PromptTemplate
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models import ChatOpenAI
-from htmlTemplates import css, bot_template, user_template
+import requests
+from bs4 import BeautifulSoup
+import nltk
+from nltk.tokenize import sent_tokenize
+from sentence_transformers import SentenceTransformer
+import faiss
+import numpy as np
+from together import Together
+from transformers import pipeline
+from embeddings import HuggingFaceEmbeddings  # Import the HuggingFaceEmbeddings
 
-# Load environment variables from .env file
-load_dotenv()
+WIKI_URL = "https://en.wikipedia.org/wiki/Luke_Skywalker"
+TOGETHER_API_KEY = st.secrets["together"]["api_key"]
 
-# Load OpenAI API key from Streamlit secrets
-openai_api_key = st.secrets["streamlit"]["openai_api_key"]
+summarizer = pipeline("summarization")
 
-# Custom prompt template for rephrasing follow-up questions
-custom_template = """
-Given the following conversation and a follow-up question, rephrase the follow-up question to be a standalone question, in its original language.
-Chat History:
-{chat_history}
-Follow-Up Input: {question}
-Standalone question:
-"""
+@st.cache(suppress_st_warning=True)
+def scrape_wiki_page(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    paragraphs = soup.find_all('p')
+    content = "\n".join([para.get_text() for para in paragraphs])
+    return content
 
-# Prompt template instance
-CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
-
-def get_pdf_text(docs):
-    text = ""
-    for pdf in docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-            text += "\n"  # Add a newline character to separate text from different pages
-    return text
-
-
-# Convert text to chunks
-def get_chunks(raw_text):
-    text_splitter = CharacterTextSplitter(separator="\n",
-                                          chunk_size=1000,
-                                          chunk_overlap=200,
-                                          length_function=len)   
-    chunks = text_splitter.split_text(raw_text)
+@st.cache(suppress_st_warning=True)
+def chunk_content(content, chunk_size=5):
+    nltk.download('punkt')
+    sentences = sent_tokenize(content)
+    chunks = [' '.join(sentences[i:i + chunk_size]) for i in range(0, len(sentences), chunk_size)]
     return chunks
 
-# Generate vector store
-def get_vectorstore(chunks):
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
-                                       model_kwargs={'device':'cpu'})
-    vectorstore = faiss.FAISS.from_texts(texts=chunks, embedding=embeddings)
-    return vectorstore
+@st.cache(suppress_st_warning=True)
+def store_chunks_in_faiss(chunks):
+    # Use the HuggingFaceEmbeddings model for generating embeddings
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device':'cpu'})
+    chunk_embeddings = embeddings.encode(chunks)
+    d = chunk_embeddings.shape[1]
+    index = faiss.IndexFlatL2(d)
+    index.add(np.array(chunk_embeddings))
+    return index, chunks, embeddings  # Return embeddings instead of SentenceTransformer model
 
-# Generate conversation chain  
-def get_conversationchain(vectorstore, openai_api_key):
-    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    memory = ConversationBufferMemory(memory_key='chat_history', 
-                                      return_messages=True,
-                                      output_key='answer') 
-    conversation_chain = ConversationalRetrievalChain.from_llm(
-                                llm=llm,
-                                retriever=vectorstore.as_retriever(),
-                                condense_question_prompt=CUSTOM_QUESTION_PROMPT,
-                                memory=memory)
-    return conversation_chain
+def get_relevant_chunks(question, index, chunks, embeddings, k=3):
+    question_embedding = embeddings.encode([question])
+    distances, indices = index.search(question_embedding, k)
+    return [chunks[i] for i in indices[0]]
 
-# Generate response from user queries and display them accordingly
-def handle_question(question, openai_api_key):
-    # Check if there's conversation history available
-    if st.session_state.conversation:
-        response = st.session_state.conversation({'question': question})
-        if response["answer"]:
-            # If answer found in conversation history, display it
-            st.session_state.chat_history = response["chat_history"]
-            for i, msg in enumerate(st.session_state.chat_history):
-                if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-            return
-
-    # Check if the question is specific and related to the uploaded PDF documents
-    if st.session_state.conversation and response.get("answer", "").startswith("I don't know"):
-        # If specific question not found in processed documents, use LLM to respond
-        llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-        response = llm.predict(question)
-        st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-        return
-
-    # If none of the above conditions are met, use the LLM to generate a response
-    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    response = llm.predict(question)
-    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-
-
-def main():
-    st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
-    st.write(css, unsafe_allow_html=True)
-
-    if "conversation" not in st.session_state:
-        st.session_state.conversation = None
-
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = None
+def generate_answer(question, context):
+    system_message = """ 
+    You are not an AI language model.
+    Answer only from chunks"""
     
-    if "vectorstore" not in st.session_state:
-        st.session_state.vectorstore = None
+    messages = [{"role": "system", "content": system_message}]
+    prompt = f"{question}\n{context}"
+    messages.append({"role": "user", "content": prompt})
 
-    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
-    question = st.text_input("Ask a question")
+    together_client = Together(api_key=TOGETHER_API_KEY)
     
-    if question:
-        handle_question(question, openai_api_key)  # Pass the API key here
-    else:
-        st.warning("Type a question to start the conversation.")
-    
-    with st.sidebar:
-        st.subheader("Upload Documents")
-        docs = st.file_uploader("Upload PDF documents", accept_multiple_files=True)
-        
-        if st.button("Process Documents"):
-            with st.spinner("Processing"):
-                if docs:
-                    # Get the pdf
-                    raw_text = get_pdf_text(docs)
-                    
-                    # Get the text chunks
-                    text_chunks = get_chunks(raw_text)
-                    
-                    # Create vectorstore
-                    st.session_state.vectorstore = get_vectorstore(text_chunks)
-                    
-                    # Create conversation chain
-                    st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
-                else:
-                    st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
+    try:
+        response = together_client.chat.completions.create(
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+            messages=messages,
+        )
+        answer = response.choices[0].message.content
+        return answer
+    except Exception as e:
+        return f"Error generating answer: {str(e)}"
 
-if __name__ == '__main__':
-    main()
+st.title("Luke Skywalker Q&A")
+st.write("Ask any question about Luke Skywalker:")
+
+content = scrape_wiki_page(WIKI_URL)
+chunks = chunk_content(content)
+index, chunks, embeddings = store_chunks_in_faiss(chunks)
+
+question = st.text_input("Your question:")
+
+if question:
+    relevant_chunks = get_relevant_chunks(question, index, chunks, embeddings)
+    context = " ".join(relevant_chunks)
+    answer = generate_answer(question, context)
+    st.write("Answer:", answer)
+    
+    if len(answer) > 100:
+        summary = summarizer(answer, max_length=50, min_length=25, do_sample=False)[0]['summary_text']
+        st.write("Summary:", summary)

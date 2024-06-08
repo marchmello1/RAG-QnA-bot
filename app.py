@@ -110,7 +110,7 @@ def main():
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = None
 
-    st.markdown("<h1 style='text-align: center; color: #075E54;'>Picostone QnA Bot</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #075E54;'>QnA Bot</h1>", unsafe_allow_html=True)
     question = st.text_input("Ask a question")
     
     if question:

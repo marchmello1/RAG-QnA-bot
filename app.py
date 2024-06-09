@@ -1,3 +1,6 @@
+Sure, I will update the code to store the query and response pairs in `dataset.csv` without displaying them on Streamlit and remove the evaluation code. Here is the revised code:
+
+```python
 import os
 from dotenv import load_dotenv
 import csv
@@ -114,16 +117,6 @@ def handle_question(question, openai_api_key):
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
 
-# Evaluation Metrics
-def evaluate_response_relevance(response, expected_keywords):
-    return any(keyword in response.lower() for keyword in expected_keywords)
-
-def evaluate_contextual_accuracy(chat_history, new_question, new_response):
-    return new_response.startswith(chat_history[-1].content.split()[-1])
-
-def evaluate_coverage(response, document_sections):
-    return all(section in response for section in document_sections)
-
 def main():
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
     st.write(css, unsafe_allow_html=True)
@@ -161,28 +154,8 @@ def main():
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 
-    # Display dataset and evaluation results
-    if st.session_state.dataset:
-        st.subheader("Dataset")
-        st.write(st.session_state.dataset)
-
-        st.subheader("Evaluation Metrics")
-
-        # Example Evaluation
-        st.write("Evaluating Response Relevance for the first response...")
-        first_response = st.session_state.dataset[0]["answer"]
-        expected_keywords = ["insurance", "policy", "coverage"]
-        relevance_score = evaluate_response_relevance(first_response, expected_keywords)
-        st.write(f"Relevance Score: {relevance_score}")
-
-        st.write("Evaluating Contextual Accuracy for the first response...")
-        contextual_accuracy_score = evaluate_contextual_accuracy(st.session_state.chat_history, question, first_response)
-        st.write(f"Contextual Accuracy Score: {contextual_accuracy_score}")
-
-        st.write("Evaluating Coverage for the first response...")
-        document_sections = ["introduction", "policy details", "coverage"]
-        coverage_score = evaluate_coverage(first_response, document_sections)
-        st.write(f"Coverage Score: {coverage_score}")
-
 if __name__ == '__main__':
     main()
+```
+
+This revised code will store the query and response pairs in `dataset.csv` without displaying them on the Streamlit interface and will not include the evaluation code.

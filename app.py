@@ -1,6 +1,5 @@
 import os
 import csv
-from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
@@ -31,7 +30,6 @@ Standalone question:
 CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
 
 def get_pdf_text(docs):
-    """Extract text from a list of PDF documents."""
     text = ""
     for pdf in docs:
         pdf_reader = PdfReader(pdf)
@@ -41,7 +39,6 @@ def get_pdf_text(docs):
     return text
 
 def get_chunks(raw_text):
-    """Convert raw text into manageable chunks."""
     text_splitter = CharacterTextSplitter(separator="\n",
                                           chunk_size=1000,
                                           chunk_overlap=200,
@@ -50,14 +47,12 @@ def get_chunks(raw_text):
     return chunks
 
 def get_vectorstore(chunks):
-    """Generate a vector store from text chunks."""
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
                                        model_kwargs={'device': 'cpu'})
     vectorstore = faiss.FAISS.from_texts(texts=chunks, embedding=embeddings)
     return vectorstore
 
 def get_conversationchain(vectorstore, openai_api_key):
-    """Create a conversational retrieval chain."""
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     memory = ConversationBufferMemory(memory_key='chat_history',
                                       return_messages=True,
@@ -69,44 +64,66 @@ def get_conversationchain(vectorstore, openai_api_key):
         memory=memory)
     return conversation_chain
 
+# Save dataset to CSV file
+def save_dataset(question, answer):
+    if "dataset" not in st.session_state:
+        st.session_state.dataset = []
+
+    st.session_state.dataset.append({"question": question, "answer": answer})
+    with open("dataset.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["question", "answer"])
+        writer.writeheader()
+        writer.writerows(st.session_state.dataset)
+
+# Load dataset from CSV file
+def load_dataset():
+    if "dataset" not in st.session_state:
+        st.session_state.dataset = []
+
+    if os.path.exists("dataset.csv"):
+        with open("dataset.csv", "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            st.session_state.dataset = [row for row in reader]
+
 def handle_question(question, openai_api_key):
-    """Generate response from user queries and display them accordingly."""
     try:
         if st.session_state.conversation:
             response = st.session_state.conversation({'question': question})
             if response["answer"]:
-                # If answer found in conversation history, display it
                 st.session_state.chat_history = response["chat_history"]
                 for i, msg in enumerate(st.session_state.chat_history):
                     if i % 2 == 0:
                         st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
                     else:
                         st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                save_dataset(question, response["answer"])
                 return
 
-        # Check if the question is specific and related to the uploaded PDF documents
         if st.session_state.conversation and response.get("answer", "").startswith("I don't know"):
-            # If specific question not found in processed documents, use LLM to respond
             llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
             response = llm.predict(question)
             st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+            save_dataset(question, response)
             return
 
-        # If none of the above conditions are met, use the LLM to generate a response
         llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
         response = llm.predict(question)
         st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
+        save_dataset(question, response)
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(f"An error occurred: {str(e)}")
 
-def save_dataset(query, response):
-    """Save query-response pairs to a CSV file for evaluation."""
-    with open('dataset.csv', mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([query, response])
+# Evaluation Metrics
+def evaluate_response_relevance(response, expected_keywords):
+    return any(keyword in response.lower() for keyword in expected_keywords)
+
+def evaluate_contextual_accuracy(chat_history, new_question, new_response):
+    return new_response.startswith(chat_history[-1].content.split()[-1])
+
+def evaluate_coverage(response, document_sections):
+    return all(section in response for section in document_sections)
 
 def main():
-    """Main function to run the Streamlit app."""
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
     st.write(css, unsafe_allow_html=True)
 
@@ -119,12 +136,13 @@ def main():
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = None
 
+    load_dataset()
+
     st.markdown("<h1 style='text-align: center; color: #075E54;'>QnA Bot</h1>", unsafe_allow_html=True)
     question = st.text_input("Ask a question")
 
     if question:
-        handle_question(question, openai_api_key)  # Pass the API key here
-        save_dataset(question, st.session_state.chat_history[-1].content if st.session_state.chat_history else "")
+        handle_question(question, openai_api_key)
     else:
         st.warning("Type a question to start the conversation.")
 
@@ -135,23 +153,35 @@ def main():
         if st.button("Process Documents"):
             with st.spinner("Processing"):
                 if docs:
-                    try:
-                        # Get the pdf
-                        raw_text = get_pdf_text(docs)
-
-                        # Get the text chunks
-                        text_chunks = get_chunks(raw_text)
-
-                        # Create vectorstore
-                        st.session_state.vectorstore = get_vectorstore(text_chunks)
-
-                        # Create conversation chain
-                        st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
-                        st.success("Documents processed successfully!")
-                    except Exception as e:
-                        st.error(f"An error occurred while processing the documents: {e}")
+                    raw_text = get_pdf_text(docs)
+                    text_chunks = get_chunks(raw_text)
+                    st.session_state.vectorstore = get_vectorstore(text_chunks)
+                    st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
+
+    # Display dataset and evaluation results
+    if st.session_state.dataset:
+        st.subheader("Dataset")
+        st.write(st.session_state.dataset)
+
+        st.subheader("Evaluation Metrics")
+
+        # Example Evaluation
+        st.write("Evaluating Response Relevance for the first response...")
+        first_response = st.session_state.dataset[0]["answer"]
+        expected_keywords = ["insurance", "policy", "coverage"]
+        relevance_score = evaluate_response_relevance(first_response, expected_keywords)
+        st.write(f"Relevance Score: {relevance_score}")
+
+        st.write("Evaluating Contextual Accuracy for the first response...")
+        contextual_accuracy_score = evaluate_contextual_accuracy(st.session_state.chat_history, question, first_response)
+        st.write(f"Contextual Accuracy Score: {contextual_accuracy_score}")
+
+        st.write("Evaluating Coverage for the first response...")
+        document_sections = ["introduction", "policy details", "coverage"]
+        coverage_score = evaluate_coverage(first_response, document_sections)
+        st.write(f"Coverage Score: {coverage_score}")
 
 if __name__ == '__main__':
     main()

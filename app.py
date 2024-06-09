@@ -1,5 +1,5 @@
 import os
-from dotenv import load_dotenv
+import csv
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
@@ -16,7 +16,6 @@ load_dotenv()
 
 # Load OpenAI API key from Streamlit secrets
 openai_api_key = st.secrets["streamlit"]["openai_api_key"]
-
 
 # Custom prompt template for rephrasing follow-up questions
 custom_template = """
@@ -132,7 +131,7 @@ def main():
         st.session_state.conversation = None
 
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = None
+        st.session_state.chat_history = []
 
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = None

@@ -1,5 +1,5 @@
 import os
-import csv
+from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
@@ -16,6 +16,7 @@ load_dotenv()
 
 # Load OpenAI API key from Streamlit secrets
 openai_api_key = st.secrets["streamlit"]["openai_api_key"]
+
 
 # Custom prompt template for rephrasing follow-up questions
 custom_template = """

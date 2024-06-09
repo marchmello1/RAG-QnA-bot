@@ -1,4 +1,5 @@
 import os
+import csv
 from dotenv import load_dotenv
 import streamlit as st
 from PyPDF2 import PdfReader
@@ -30,6 +31,7 @@ Standalone question:
 CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
 
 def get_pdf_text(docs):
+    """Extract text from a list of PDF documents."""
     text = ""
     for pdf in docs:
         pdf_reader = PdfReader(pdf)
@@ -38,66 +40,73 @@ def get_pdf_text(docs):
             text += "\n"  # Add a newline character to separate text from different pages
     return text
 
-
-# Convert text to chunks
 def get_chunks(raw_text):
+    """Convert raw text into manageable chunks."""
     text_splitter = CharacterTextSplitter(separator="\n",
                                           chunk_size=1000,
                                           chunk_overlap=200,
-                                          length_function=len)   
+                                          length_function=len)
     chunks = text_splitter.split_text(raw_text)
     return chunks
 
-# Generate vector store
 def get_vectorstore(chunks):
+    """Generate a vector store from text chunks."""
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
-                                       model_kwargs={'device':'cpu'})
+                                       model_kwargs={'device': 'cpu'})
     vectorstore = faiss.FAISS.from_texts(texts=chunks, embedding=embeddings)
     return vectorstore
 
-# Generate conversation chain  
 def get_conversationchain(vectorstore, openai_api_key):
+    """Create a conversational retrieval chain."""
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    memory = ConversationBufferMemory(memory_key='chat_history', 
+    memory = ConversationBufferMemory(memory_key='chat_history',
                                       return_messages=True,
-                                      output_key='answer') 
+                                      output_key='answer')
     conversation_chain = ConversationalRetrievalChain.from_llm(
-                                llm=llm,
-                                retriever=vectorstore.as_retriever(),
-                                condense_question_prompt=CUSTOM_QUESTION_PROMPT,
-                                memory=memory)
+        llm=llm,
+        retriever=vectorstore.as_retriever(),
+        condense_question_prompt=CUSTOM_QUESTION_PROMPT,
+        memory=memory)
     return conversation_chain
 
-# Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
-    # Check if there's conversation history available
-    if st.session_state.conversation:
-        response = st.session_state.conversation({'question': question})
-        if response["answer"]:
-            # If answer found in conversation history, display it
-            st.session_state.chat_history = response["chat_history"]
-            for i, msg in enumerate(st.session_state.chat_history):
-                if i % 2 == 0:
-                    st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
-                else:
-                    st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+    """Generate response from user queries and display them accordingly."""
+    try:
+        if st.session_state.conversation:
+            response = st.session_state.conversation({'question': question})
+            if response["answer"]:
+                # If answer found in conversation history, display it
+                st.session_state.chat_history = response["chat_history"]
+                for i, msg in enumerate(st.session_state.chat_history):
+                    if i % 2 == 0:
+                        st.write(user_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                    else:
+                        st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
+                return
+
+        # Check if the question is specific and related to the uploaded PDF documents
+        if st.session_state.conversation and response.get("answer", "").startswith("I don't know"):
+            # If specific question not found in processed documents, use LLM to respond
+            llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
+            response = llm.predict(question)
+            st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
             return
 
-    # Check if the question is specific and related to the uploaded PDF documents
-    if st.session_state.conversation and response.get("answer", "").startswith("I don't know"):
-        # If specific question not found in processed documents, use LLM to respond
+        # If none of the above conditions are met, use the LLM to generate a response
         llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
         response = llm.predict(question)
         st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-        return
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 
-    # If none of the above conditions are met, use the LLM to generate a response
-    llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
-    response = llm.predict(question)
-    st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
-
+def save_dataset(query, response):
+    """Save query-response pairs to a CSV file for evaluation."""
+    with open('dataset.csv', mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([query, response])
 
 def main():
+    """Main function to run the Streamlit app."""
     st.set_page_config(page_title="Picostone QnA bot", page_icon=":robot_face:", layout="wide")
     st.write(css, unsafe_allow_html=True)
 
@@ -106,36 +115,41 @@ def main():
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = None
-    
+
     if "vectorstore" not in st.session_state:
         st.session_state.vectorstore = None
 
     st.markdown("<h1 style='text-align: center; color: #075E54;'>QnA Bot</h1>", unsafe_allow_html=True)
     question = st.text_input("Ask a question")
-    
+
     if question:
         handle_question(question, openai_api_key)  # Pass the API key here
+        save_dataset(question, st.session_state.chat_history[-1].content if st.session_state.chat_history else "")
     else:
         st.warning("Type a question to start the conversation.")
-    
+
     with st.sidebar:
         st.subheader("Upload Documents")
         docs = st.file_uploader("Upload PDF documents", accept_multiple_files=True)
-        
+
         if st.button("Process Documents"):
             with st.spinner("Processing"):
                 if docs:
-                    # Get the pdf
-                    raw_text = get_pdf_text(docs)
-                    
-                    # Get the text chunks
-                    text_chunks = get_chunks(raw_text)
-                    
-                    # Create vectorstore
-                    st.session_state.vectorstore = get_vectorstore(text_chunks)
-                    
-                    # Create conversation chain
-                    st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
+                    try:
+                        # Get the pdf
+                        raw_text = get_pdf_text(docs)
+
+                        # Get the text chunks
+                        text_chunks = get_chunks(raw_text)
+
+                        # Create vectorstore
+                        st.session_state.vectorstore = get_vectorstore(text_chunks)
+
+                        # Create conversation chain
+                        st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
+                        st.success("Documents processed successfully!")
+                    except Exception as e:
+                        st.error(f"An error occurred while processing the documents: {e}")
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 

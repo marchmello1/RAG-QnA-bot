@@ -1,6 +1,3 @@
-Sure, I will update the code to store the query and response pairs in `dataset.csv` without displaying them on Streamlit and remove the evaluation code. Here is the revised code:
-
-```python
 import os
 from dotenv import load_dotenv
 import csv
@@ -156,6 +153,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-```
 
-This revised code will store the query and response pairs in `dataset.csv` without displaying them on the Streamlit interface and will not include the evaluation code.

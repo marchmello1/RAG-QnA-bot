@@ -69,11 +69,9 @@ def get_conversationchain(vectorstore, openai_api_key):
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
-    # Check if there's conversation history available
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         if response["answer"]:
-            # If answer found in conversation history, display it
             st.session_state.chat_history = response["chat_history"]
             for i, msg in enumerate(reversed(st.session_state.chat_history)):
                 if i % 2 == 0:
@@ -82,15 +80,12 @@ def handle_question(question, openai_api_key):
                     st.write(bot_template.replace("{{MSG}}", msg.content), unsafe_allow_html=True)
             return
 
-    # Check if the question is specific and related to the uploaded PDF documents
     if st.session_state.conversation and response.get("answer", "").startswith("I don't know"):
-        # If specific question not found in processed documents, use LLM to respond
         llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
         response = llm.predict(question)
         st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
         return
 
-    # If none of the above conditions are met, use the LLM to generate a response
     llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
     response = llm.predict(question)
     st.write(bot_template.replace("{{MSG}}", response), unsafe_allow_html=True)
@@ -123,16 +118,9 @@ def main():
         if st.button("Process Documents"):
             with st.spinner("Processing"):
                 if docs:
-                    # Get the pdf
                     raw_text = get_pdf_text(docs)
-                    
-                    # Get the text chunks
                     text_chunks = get_chunks(raw_text)
-                    
-                    # Create vectorstore
                     st.session_state.vectorstore = get_vectorstore(text_chunks)
-                    
-                    # Create conversation chain
                     st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")

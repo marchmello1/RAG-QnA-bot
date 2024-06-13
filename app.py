@@ -79,7 +79,7 @@ def get_conversationchain(vectorstore, openai_api_key):
 def rerank_documents(question, retrieved_docs):
     pairs = [[question, doc] for doc in retrieved_docs]
     with torch.no_grad():
-        inputs = reranker_tokenizer(pairs, padding=True, truncation=True, return_tensors='pt', max_length=512)
+        inputs = reranker_tokenizer(pairs, padding=True, truncation=True, return_tensors='pt', max_length=128)  # Reduce max_length
         scores = reranker_model(**inputs, return_dict=True).logits.view(-1, ).float()
     sorted_docs = [doc for _, doc in sorted(zip(scores, retrieved_docs), key=lambda pair: pair[0], reverse=True)]
     return sorted_docs
@@ -99,7 +99,7 @@ def handle_question(question, openai_api_key):
 
     if st.session_state.vectorstore:
         retriever = st.session_state.vectorstore.as_retriever()
-        retrieved_docs = retriever.retrieve(question, top_k=10)  # Retrieve top 10 documents
+        retrieved_docs = retriever.retrieve(question, top_k=5)  # Retrieve top 5 documents to reduce memory usage
         reranked_docs = rerank_documents(question, retrieved_docs)  # Rerank the retrieved documents
         top_doc = reranked_docs[0]  # Use the top reranked document
         llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)

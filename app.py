@@ -35,7 +35,7 @@ def get_pdf_text(docs):
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             text += page.extract_text()
-            text += "\n"  # Add a newline character to separate text from different pages
+            text += "\n" 
     return text
 
 # Convert text to chunks
@@ -107,7 +107,7 @@ def main():
     question = st.text_input("Ask a question")
     
     if question:
-        handle_question(question, openai_api_key)  # Pass the API key here
+        handle_question(question, openai_api_key)  
     else:
         st.warning("Type a question to start the conversation.")
     
@@ -121,7 +121,7 @@ def main():
                     raw_text = get_pdf_text(docs)
                     text_chunks = get_chunks(raw_text)
                     st.session_state.vectorstore = get_vectorstore(text_chunks)
-                    st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  # Pass the API key here
+                    st.session_state.conversation = get_conversationchain(st.session_state.vectorstore, openai_api_key)  
                 else:
                     st.warning("No PDF files uploaded. Continuing conversation without searching from PDFs.")
 

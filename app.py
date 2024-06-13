@@ -10,13 +10,20 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from htmlTemplates import css, bot_template, user_template
-from langchain.reranker import RerankModel  # Import reranker
+
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Load OpenAI API key from Streamlit secrets
 openai_api_key = st.secrets["streamlit"]["openai_api_key"]
+
+# Load reranker model and tokenizer
+reranker_tokenizer = AutoTokenizer.from_pretrained('BAAI/bge-reranker-v2-m3')
+reranker_model = AutoModelForSequenceClassification.from_pretrained('BAAI/bge-reranker-v2-m3')
+reranker_model.eval()
 
 # Custom prompt template for rephrasing follow-up questions
 custom_template = """
@@ -69,10 +76,13 @@ def get_conversationchain(vectorstore, openai_api_key):
     return conversation_chain
 
 # Rerank retrieved documents
-def rerank_documents(retrieved_docs, question):
-    reranker = RerankModel(model_name="cross-encoder/ms-marco-TinyBERT-L-2-v2")
-    reranked_docs = reranker.rerank(question, retrieved_docs)
-    return reranked_docs
+def rerank_documents(question, retrieved_docs):
+    pairs = [[question, doc] for doc in retrieved_docs]
+    with torch.no_grad():
+        inputs = reranker_tokenizer(pairs, padding=True, truncation=True, return_tensors='pt', max_length=512)
+        scores = reranker_model(**inputs, return_dict=True).logits.view(-1, ).float()
+    sorted_docs = [doc for _, doc in sorted(zip(scores, retrieved_docs), key=lambda pair: pair[0], reverse=True)]
+    return sorted_docs
 
 # Generate response from user queries and display them accordingly
 def handle_question(question, openai_api_key):
@@ -90,7 +100,7 @@ def handle_question(question, openai_api_key):
     if st.session_state.vectorstore:
         retriever = st.session_state.vectorstore.as_retriever()
         retrieved_docs = retriever.retrieve(question, top_k=10)  # Retrieve top 10 documents
-        reranked_docs = rerank_documents(retrieved_docs, question)  # Rerank the retrieved documents
+        reranked_docs = rerank_documents(question, retrieved_docs)  # Rerank the retrieved documents
         top_doc = reranked_docs[0]  # Use the top reranked document
         llm = ChatOpenAI(temperature=0.2, openai_api_key=openai_api_key)
         response = llm.predict(top_doc)
